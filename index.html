@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dompetku - Pencatat Keuangan</title>
+  
+  <!-- Font & Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --income: #10b981;
+      --expense: #ef4444;
+      --bg: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 20px 12px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 1100px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 4px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand i {
+      font-size: 1.8rem;
+      color: var(--primary);
+    }
+
+    .brand h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    /* Cards Summary */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+    }
+
+    .summary-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .summary-info p {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .summary-info h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .icon-box {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+    }
+
+    .icon-box.balance { background: rgba(79, 70, 229, 0.15); color: var(--primary); }
+    .icon-box.income { background: rgba(16, 185, 129, 0.15); color: var(--income); }
+    .icon-box.expense { background: rgba(239, 68, 68, 0.15); color: var(--expense); }
+
+    /* Main Layout */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+
+    @media (min-width: 900px) {
+      .main-grid {
+        grid-template-columns: 380px 1fr;
+      }
+    }
+
+    /* Form Styles */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 12px 14px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 0.95rem;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 12px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-submit:hover {
+      background: var(--primary-hover);
+    }
+
+    /* Filter & History */
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .filter-select {
+      width: auto;
+      padding: 6px 12px;
+      font-size: 0.85rem;
+    }
+
+    .transaction-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 380px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .transaction-list::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .transaction-list::-webkit-scrollbar-thumb {
+      background: var(--card-border);
+      border-radius: 4px;
+    }
+
+    .transaction-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+    }
+
+    .item-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .item-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+    }
+
+    .item-details h4 {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .item-details p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .item-amount {
+      text-align: right;
+    }
+
+    .item-amount .val {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .val.income { color: var(--income); }
+    .val.expense { color: var(--expense); }
+
+    .btn-delete {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      margin-left: 12px;
+      padding: 4px;
+      transition: color 0.2s;
+    }
+
+    .btn-delete:hover {
+      color: var(--expense);
+    }
+
+    /* Chart Container */
+    .chart-container {
+      position: relative;
+      height: 220px;
+      margin-top: 16px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 30px 0;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header>
+      <div class="brand">
+        <i class="fa-solid fa-wallet"></i>
+        <h1>Dompetku</h1>
+      </div>
+    </header>
+
+    <!-- Ringkasan Saldo -->
+    <section class="summary-grid">
+      <div class="card summary-card">
+        <div class="summary-info">
+          <p>Total Saldo</p>
+          <h2 id="total-balance">Rp 0</h2>
+        </div>
+        <div class="icon-box balance"><i class="fa-solid fa-scale-balanced"></i></div>
+      </div>
+      
+      <div class="card summary-card">
+        <div class="summary-info">
+          <p>Total Pemasukan</p>
+          <h2 id="total-income" style="color: var(--income);">Rp 0</h2>
+        </div>
+        <div class="icon-box income"><i class="fa-solid fa-arrow-down"></i></div>
+      </div>
+
+      <div class="card summary-card">
+        <div class="summary-info">
+          <p>Total Pengeluaran</p>
+          <h2 id="total-expense" style="color: var(--expense);">Rp 0</h2>
+        </div>
+        <div class="icon-box expense"><i class="fa-solid fa-arrow-up"></i></div>
+      </div>
+    </section>
+
+    <!-- Main Content -->
+    <div class="main-grid">
+      <!-- Form Input -->
+      <section class="card">
+        <h3 style="margin-bottom: 16px; font-size: 1.1rem;">Tambah Transaksi</h3>
+        <form id="transaction-form">
+          <div class="form-group">
+            <label>Jenis Transaksi</label>
+            <select id="type" onchange="updateCategoryOptions()">
+              <option value="expense">Pengeluaran</option>
+              <option value="income">Pemasukan</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Kategori</label>
+            <select id="category"></select>
+          </div>
+
+          <div class="form-group">
+            <label>Nominal (Rp)</label>
+            <input type="number" id="amount" placeholder="Contoh: 50000" required min="1">
+          </div>
+
+          <div class="form-group">
+            <label>Catatan / Keterangan</label>
+            <input type="text" id="description" placeholder="Contoh: Beli Bensin" required>
+          </div>
+
+          <button type="submit" class="btn-submit">Simpan Transaksi</button>
+        </form>
+      </section>
+
+      <!-- Riwayat & Visualisasi -->
+      <div style="display: flex; flex-direction: column; gap: 24px;">
+        <!-- Chart -->
+        <section class="card">
+          <h3 style="font-size: 1.1rem;">Analisis Pengeluaran</h3>
+          <div class="chart-container">
+            <canvas id="expenseChart"></canvas>
+          </div>
+        </section>
+
+        <!-- List Transaksi -->
+        <section class="card">
+          <div class="section-header">
+            <h3 style="font-size: 1.1rem;">Riwayat Transaksi</h3>
+            <select id="filter-category" class="filter-select" onchange="renderTransactions()">
+              <option value="all">Semua Kategori</option>
+            </select>
+          </div>
+          <div id="transaction-list" class="transaction-list"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Data Kategori & Ikon
+    const categories = {
+      income: [
+        { id: 'Gaji', name: 'Gaji', icon: 'fa-money-bill-wave' },
+        { id: 'Bonus', name: 'Bonus / Sampingan', icon: 'fa-gift' },
+        { id: 'Investasi', name: 'Investasi', icon: 'fa-chart-line' },
+        { id: 'Lainnya', name: 'Pemasukan Lain', icon: 'fa-wallet' }
+      ],
+      expense: [
+        { id: 'Makanan', name: 'Makanan & Minuman', icon: 'fa-utensils' },
+        { id: 'Transport', name: 'Transportasi', icon: 'fa-car' },
+        { id: 'Belanja', name: 'Belanja', icon: 'fa-bag-shopping' },
+        { id: 'Tagihan', name: 'Tagihan & Utilitas', icon: 'fa-file-invoice-dollar' },
+        { id: 'Hiburan', name: 'Hiburan', icon: 'fa-gamepad' },
+        { id: 'Kesehatan', name: 'Kesehatan', icon: 'fa-heart-pulse' },
+        { id: 'Lainnya', name: 'Pengeluaran Lain', icon: 'fa-receipt' }
+      ]
+    };
+
+    // Global State
+    let transactions = JSON.parse(localStorage.getItem('dompetku_transactions')) || [];
+    let myChart = null;
+
+    // Elements
+    const form = document.getElementById('transaction-form');
+    const typeInput = document.getElementById('type');
+    const categoryInput = document.getElementById('category');
+    const amountInput = document.getElementById('amount');
+    const descInput = document.getElementById('description');
+    const filterCategory = document.getElementById('filter-category');
+
+    // Format Rupiah
+    function formatRupiah(number) {
+      return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        maximumFractionDigits: 0
+      }).format(number);
+    }
+
+    // Dynamic Select Category Options
+    function updateCategoryOptions() {
+      const type = typeInput.value;
+      categoryInput.innerHTML = '';
+      
+      categories[type].forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat.id;
+        option.textContent = cat.name;
+        categoryInput.appendChild(option);
+      });
+    }
+
+    // Populate Filter Category Dropdown
+    function populateFilterOptions() {
+      filterCategory.innerHTML = '<option value="all">Semua Kategori</option>';
+      const allCats = [...categories.income, ...categories.expense];
+      
+      // Ambil kategori unik yang pernah dipakai
+      const usedCategories = [...new Set(transactions.map(t => t.category))];
+      
+      usedCategories.forEach(catId => {
+        const catObj = allCats.find(c => c.id === catId);
+        if (catObj) {
+          const option = document.createElement('option');
+          option.value = catObj.id;
+          option.textContent = catObj.name;
+          filterCategory.appendChild(option);
+        }
+      });
+    }
+
+    // Add Transaction
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const newTransaction = {
+        id: Date.now(),
+        type: typeInput.value,
+        category: categoryInput.value,
+        amount: parseFloat(amountInput.value),
+        description: descInput.value,
+        date: new Date().toISOString()
+      };
+
+      transactions.unshift(newTransaction);
+      saveAndRender();
+
+      // Reset Form
+      amountInput.value = '';
+      descInput.value = '';
+    });
+
+    // Delete Transaction
+    function deleteTransaction(id) {
+      transactions = transactions.filter(t => t.id !== id);
+      saveAndRender();
+    }
+
+    // Calculate Summaries
+    function updateSummary() {
+      const totalIncome = transactions
+        .filter(t => t.type === 'income')
+        .reduce((acc, t) => acc + t.amount, 0);
+
+      const totalExpense = transactions
+        .filter(t => t.type === 'expense')
+        .reduce((acc, t) => acc + t.amount, 0);
+
+      const totalBalance = totalIncome - totalExpense;
+
+      document.getElementById('total-balance').textContent = formatRupiah(totalBalance);
+      document.getElementById('total-income').textContent = formatRupiah(totalIncome);
+      document.getElementById('total-expense').textContent = formatRupiah(totalExpense);
+    }
+
+    // Render Transaction List
+    function renderTransactions() {
+      const listElement = document.getElementById('transaction-list');
+      const selectedFilter = filterCategory.value;
+      listElement.innerHTML = '';
+
+      const filtered = selectedFilter === 'all' 
+        ? transactions 
+        : transactions.filter(t => t.category === selectedFilter);
+
+      if (filtered.length === 0) {
+        listElement.innerHTML = '<div class="empty-state">Belum ada catatan transaksi.</div>';
+        return;
+      }
+
+      const allCats = [...categories.income, ...categories.expense];
+
+      filtered.forEach(t => {
+        const catObj = allCats.find(c => c.id === t.category) || { icon: 'fa-receipt', name: t.category };
+        const isIncome = t.type === 'income';
+        const formattedDate = new Date(t.date).toLocaleDateString('id-ID', {
+          day: 'numeric',
+          month: 'short'
+        });
+
+        const item = document.createElement('div');
+        item.className = 'transaction-item';
+        item.innerHTML = `
+          <div class="item-info">
+            <div class="item-icon" style="background: ${isIncome ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)'}; color: ${isIncome ? 'var(--income)' : 'var(--expense)'};">
+              <i class="fa-solid ${catObj.icon}"></i>
+            </div>
+            <div class="item-details">
+              <h4>${t.description}</h4>
+              <p>${catObj.name} • ${formattedDate}</p>
+            </div>
+          </div>
+          <div class="item-amount">
+            <span class="val ${t.type}">${isIncome ? '+' : '-'} ${formatRupiah(t.amount)}</span>
+            <button class="btn-delete" onclick="deleteTransaction(${t.id})" title="Hapus">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        `;
+        listElement.appendChild(item);
+      });
+    }
+
+    // Render Chart
+    function renderChart() {
+      const ctx = document.getElementById('expenseChart').getContext('2d');
+      
+      // Group pengeluaran berdasarkan kategori
+      const expenseData = {};
+      transactions
+        .filter(t => t.type === 'expense')
+        .forEach(t => {
+          expenseData[t.category] = (expenseData[t.category] || 0) + t.amount;
+        });
+
+      const labels = Object.keys(expenseData);
+      const data = Object.values(expenseData);
+
+      if (myChart) {
+        myChart.destroy();
+      }
+
+      if (labels.length === 0) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        return;
+      }
+
+      myChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            backgroundColor: [
+              '#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', 
+              '#ec4899', '#14b8a6', '#64748b'
+            ],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: { color: '#94a3b8', font: { family: 'Plus Jakarta Sans' } }
+            }
+          }
+        }
+      });
+    }
+
+    // Save LocalStorage & Update UI
+    function saveAndRender() {
+      localStorage.setItem('dompetku_transactions', JSON.stringify(transactions));
+      updateSummary();
+      populateFilterOptions();
+      renderTransactions();
+      renderChart();
+    }
+
+    // Init App
+    updateCategoryOptions();
+    saveAndRender();
+  </script>
+</body>
+</html>
